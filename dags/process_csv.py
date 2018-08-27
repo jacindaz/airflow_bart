@@ -1,4 +1,6 @@
 import datetime as dt
+import ipdb
+import xlrd
 
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
@@ -13,27 +15,31 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-def load_xlsx_file():
-    wb = load_workbook('/Users/jacinda.zhong/Downloads/ridership_2017/Ridership_April2017.xlsx')
-    print(wb.sheetnames)
+
+def process_station_names():
+    book = xlrd.open_workbook("/Users/jacinda.zhong/Downloads/Station_Names.xls")
+    sh = book.sheet_by_index(0)
+
+    header = sh.row(0)
+    header.pop(0)
+
+    data = []
+    for row_number in range(2,sh.nrows):
+        row_values = sh.row_values(row_number)
+        row_values.pop(0)
+        data.append(row_values)
+
+    print(data)
 
 
-with DAG('process_xls',
+with DAG('process_file',
     default_args = default_args,
     schedule_interval='@hourly',
     ) as dag:
 
-    print_sheetnames = PythonOperator(
-            task_id='print_sheetnames',
-            python_callable=load_xlsx_file
-        )
+    station_names = PythonOperator(
+        task_id='station_names',
+        python_callable=process_station_names
+    )
 
-    create_table = PostgresOperator(
-            task_id='postgres_create_table',
-            sql="CREATE TABLE jacinda_test(id serial, name text);",
-            postgres_conn_id='postgres_default',
-            autocommit=True,
-            dag=dag
-        )
-
-print_sheetnames >> create_table
+station_names
