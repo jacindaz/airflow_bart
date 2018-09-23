@@ -23,7 +23,7 @@ class Base(declarative.declarative_base()):
     __abstract__ = True
 
 class StationName(Base):
-    __tablename__ = 'bart_station_names'
+    __tablename__ = 'station_names'
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -32,6 +32,11 @@ class StationName(Base):
     def __repr__(self):
         return "<StationName(id='%s', name='%s', two_letter_code='%s')>" % (
             self.id, self.name, self.two_letter_code)
+
+def create_station_name_table():
+    engine = create_engine('postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_bart')
+    StationName.__table__
+    Base.metadata.create_all(engine)
 
 def process_station_names():
     book = xlrd.open_workbook("/Users/jacinda.zhong/Downloads/Station_Names.xls")
@@ -46,18 +51,20 @@ def process_station_names():
         row_values.pop(0)
         data.append(row_values)
 
-    engine = create_engine('postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_bart')
-    StationName.__table__
-    Base.metadata.create_all(engine)
 
-with DAG('process_file',
+with DAG('import_bart_data',
     default_args = default_args,
     schedule_interval='@hourly',
     ) as dag:
+
+    create_table = PythonOperator(
+        task_id='create_table',
+        python_callable=create_station_name_table
+    )
 
     station_names = PythonOperator(
         task_id='station_names',
         python_callable=process_station_names
     )
 
-station_names
+create_table >> station_names
