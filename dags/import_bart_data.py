@@ -45,26 +45,26 @@ def process_station_names():
     header = sh.row(0)
     header.pop(0)
 
-    data = []
+    data = {}
     for row_number in range(2,sh.nrows):
         row_values = sh.row_values(row_number)
-        row_values.pop(0)
-        data.append(row_values)
+        data[row_values[0]] = row_values[1]
 
-
-with DAG('import_bart_data',
+dag = DAG('import_bart_data',
     default_args = default_args,
     schedule_interval='@hourly',
-    ) as dag:
+)
 
-    create_table = PythonOperator(
-        task_id='create_table',
-        python_callable=create_station_name_table
-    )
+create_table = PythonOperator(
+    task_id='create_table',
+    python_callable=create_station_name_table,
+    dag=dag
+)
 
-    station_names = PythonOperator(
-        task_id='station_names',
-        python_callable=process_station_names
-    )
+process_station_names = PythonOperator(
+    task_id='process_station_names',
+    python_callable=process_station_names,
+    dag=dag
+)
 
-create_table >> station_names
+process_station_names.set_upstream(create_table)
