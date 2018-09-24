@@ -8,8 +8,7 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.operators.postgres_operator import PostgresOperator
 
 from openpyxl import load_workbook
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
 from sqlalchemy.ext import declarative
 
 default_args = {
@@ -19,24 +18,15 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-class Base(declarative.declarative_base()):
-    __abstract__ = True
-
-class StationName(Base):
-    __tablename__ = 'station_names'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    two_letter_code = Column(String)
-
-    def __repr__(self):
-        return "<StationName(id='%s', name='%s', two_letter_code='%s')>" % (
-            self.id, self.name, self.two_letter_code)
-
+DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_bart'
 def create_station_name_table():
-    engine = create_engine('postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_bart')
-    StationName.__table__
-    Base.metadata.create_all(engine)
+    engine = create_engine(DB_URI)
+    meta = MetaData(engine)
+    table = Table('station_names', meta,
+       Column('id', Integer, primary_key=True),
+       Column('name', String),
+       Column('two_letter_code', String))
+    meta.create_all()
 
 def process_station_names():
     book = xlrd.open_workbook("/Users/jacinda.zhong/Downloads/Station_Names.xls")
