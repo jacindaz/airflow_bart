@@ -35,10 +35,17 @@ def process_station_names():
     header = sh.row(0)
     header.pop(0)
 
-    data = {}
+    data = []
     for row_number in range(2,sh.nrows):
         row_values = sh.row_values(row_number)
-        data[row_values[0]] = row_values[1]
+        db_row = {'name': row_values[2], 'two_letter_code': row_values[1]}
+        data.append(db_row)
+
+    engine = create_engine(DB_URI)
+    meta = MetaData(engine)
+    table = Table('station_names', meta, schema='public', autoload=True)
+    engine.execute(table.insert(), data)
+
 
 dag = DAG('import_bart_data',
     default_args = default_args,
