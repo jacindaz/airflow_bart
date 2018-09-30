@@ -8,7 +8,7 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.operators.postgres_operator import PostgresOperator
 
 from openpyxl import load_workbook
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
+from sqlalchemy import create_engine, MetaData, schema, Table, Column, Integer, String
 from sqlalchemy.ext import declarative
 
 default_args = {
@@ -18,14 +18,18 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_bart'
+DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
 def create_station_name_table():
     engine = create_engine(DB_URI)
-    meta = MetaData(engine)
+    engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
+
+    meta = MetaData(engine, schema="bart")
+    # my_schema = schema.CreateSchema('bart')
     table = Table('station_names', meta,
        Column('id', Integer, primary_key=True),
        Column('name', String),
-       Column('two_letter_code', String))
+       Column('two_letter_code', String)
+       )
     meta.create_all()
 
 def process_station_names():
@@ -43,7 +47,7 @@ def process_station_names():
 
     engine = create_engine(DB_URI)
     meta = MetaData(engine)
-    table = Table('station_names', meta, schema='public', autoload=True)
+    table = Table('station_names', meta, schema='bart', autoload=True)
     engine.execute(table.insert(), data)
 
 
