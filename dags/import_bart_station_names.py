@@ -51,7 +51,7 @@ def process_station_names():
     engine.execute(table.insert(), data)
 
 
-dag = DAG('import_bart_data',
+dag = DAG('import_bart_station_names',
     default_args = default_args,
     schedule_interval='@hourly',
 )
