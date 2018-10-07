@@ -1,6 +1,8 @@
 import datetime as dt
 import ipdb
-import os
+from os import listdir
+from os.path import isfile, join
+import re
 import xlrd
 
 from airflow import DAG
@@ -17,7 +19,7 @@ default_args = {
 }
 
 DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
-FILE_PATH = '/Users/jacinda.zhong/Downloads/ridership_2017/Ridership_December2017.xlsx'
+FILE_PATH = '/Users/jacinda.zhong/Downloads/ridership_2017/'
 
 
 def create_ridership_table():
@@ -34,7 +36,7 @@ def create_ridership_table():
                       Column('saturday', Boolean),
                       Column('sunday', Boolean),
                       Column('month', String),
-                      Column('year', String),
+                      Column('year', Integer),
                       Column('date_created', Date),
                       Column('date_modified', Date)
                   )
@@ -45,42 +47,51 @@ def process_ridership():
     meta = MetaData(engine)
     table = Table('ridership', meta, schema='bart', autoload=True)
 
-    book = xlrd.open_workbook(FILE_PATH)
+    onlyfiles = [f for f in listdir(FILE_PATH) if isfile(join(FILE_PATH, f))]
 
-    for sheet in book.sheets():
-        sheet_name = sheet.name.lower()
+    for file_name in onlyfiles:
+        print(f"processing file: {file_name}")
 
-        header = sheet.row(1)
-        header.pop(0)
-        header_values = [ cell.value for cell in header]
+        book = xlrd.open_workbook(FILE_PATH + file_name)
 
-        data = []
-        for row_number in range(2, sheet.nrows):
-            row_values = sheet.row_values(row_number)
+        regex_decimals = re.compile(r'\d+')
+        file_year = regex_decimals.findall(file_name)[0]
 
-            exit_station = row_values[0]
-            row_values.pop(0)
+        for sheet in book.sheets():
+            sheet_name = sheet.name.lower()
+            header = sheet.row(1)
+            header.pop(0)
+            header_values = [ cell.value for cell in header]
 
-            db_row = {}
-            for index, entry_station in enumerate(header_values):
-                ridership_value = round(row_values[index])
-                db_row['ridership'] = ridership_value
+            data = []
+            for row_number in range(2, sheet.nrows):
+                row_values = sheet.row_values(row_number)
 
-                if "weekday" in sheet_name:
-                    db_row["weekday"] = True
-                elif "saturday" in sheet_name:
-                    db_row["saturday"] = True
-                elif "sunday" in sheet_name:
-                    db_row["sunday"] = True
+                exit_station = row_values[0]
+                row_values.pop(0)
 
-                db_row["station_entry"] = entry_station
-                db_row["station_exit"] = exit_station
-                db_row["date_created"] = dt.datetime.now()
-                db_row["date_modified"] = dt.datetime.now()
+                db_row = {}
+                for index, entry_station in enumerate(header_values):
+                    ridership_value = round(row_values[index])
+                    db_row['ridership'] = ridership_value
 
-            data.append(db_row)
+                    if "weekday" in sheet_name:
+                        db_row["weekday"] = True
+                    elif "saturday" in sheet_name:
+                        db_row["saturday"] = True
+                    elif "sunday" in sheet_name:
+                        db_row["sunday"] = True
 
-        engine.execute(table.insert(), data)
+                    db_row["station_entry"] = entry_station
+                    db_row["station_exit"] = exit_station
+                    db_row["date_created"] = dt.datetime.now()
+                    db_row["date_modified"] = dt.datetime.now()
+
+                    db_row["year"] = file_year
+
+                data.append(db_row)
+
+            engine.execute(table.insert(), data)
 
 
 dag = DAG('import_bart_ridership',
