@@ -57,6 +57,9 @@ def process_ridership():
         regex_decimals = re.compile(r'\d+')
         file_year = regex_decimals.findall(file_name)[0]
 
+        regex_characters = re.compile(r'[a-z]+')
+        file_month = regex_characters.findall(file_name.lower())[1]
+
         for sheet in book.sheets():
             sheet_name = sheet.name.lower()
             header = sheet.row(1)
@@ -77,10 +80,19 @@ def process_ridership():
 
                     if "weekday" in sheet_name:
                         db_row["weekday"] = True
+
+                        db_row["saturday"] = False
+                        db_row["sunday"] = False
                     elif "saturday" in sheet_name:
                         db_row["saturday"] = True
+
+                        db_row["weekday"] = False
+                        db_row["sunday"] = False
                     elif "sunday" in sheet_name:
                         db_row["sunday"] = True
+
+                        db_row["weekday"] = False
+                        db_row["saturday"] = False
 
                     db_row["station_entry"] = entry_station
                     db_row["station_exit"] = exit_station
@@ -88,6 +100,7 @@ def process_ridership():
                     db_row["date_modified"] = dt.datetime.now()
 
                     db_row["year"] = file_year
+                    db_row["month"] = file_month
 
                 data.append(db_row)
 
