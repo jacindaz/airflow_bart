@@ -28,19 +28,20 @@ def create_ridership_table():
 
     meta = MetaData(engine, schema="bart")
     table = Table('ridership', meta,
-                      Column('id', Integer, primary_key=True),
-                      Column('station_entry', String),
-                      Column('station_exit', String),
-                      Column('ridership', Integer),
-                      Column('weekday', Boolean),
-                      Column('saturday', Boolean),
-                      Column('sunday', Boolean),
-                      Column('month', String),
-                      Column('year', Integer),
-                      Column('date_created', Date),
-                      Column('date_modified', Date)
+                   Column('id', Integer, primary_key=True),
+                   Column('station_entry', String),
+                   Column('station_exit', String),
+                   Column('ridership', Integer),
+                   Column('weekday', Boolean),
+                   Column('saturday', Boolean),
+                   Column('sunday', Boolean),
+                   Column('month', String),
+                   Column('year', Integer),
+                   Column('date_created', Date),
+                   Column('date_modified', Date)
                   )
     meta.create_all()
+
 
 def process_ridership():
     engine = create_engine(DB_URI)
@@ -64,7 +65,7 @@ def process_ridership():
             sheet_name = sheet.name.lower()
             header = sheet.row(1)
             header.pop(0)
-            header_values = [ cell.value for cell in header]
+            header_values = [cell.value for cell in header]
 
             data = []
             for row_number in range(2, sheet.nrows):
@@ -124,4 +125,4 @@ process_ridership = PythonOperator(
                         dag=dag
                     )
 
-create_ridership_table
+process_ridership.set_upstream(create_ridership_table)
