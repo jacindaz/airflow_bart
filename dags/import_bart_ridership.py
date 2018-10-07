@@ -46,40 +46,41 @@ def process_ridership():
     table = Table('ridership', meta, schema='bart', autoload=True)
 
     book = xlrd.open_workbook(FILE_PATH)
-    sh = book.sheet_by_index(0)
-    sheet_name = sh.name.lower()
 
-    header = sh.row(1)
-    header.pop(0)
-    header_values = [ cell.value for cell in header]
+    for sheet in book.sheets():
+        sheet_name = sheet.name.lower()
 
-    data = []
-    for row_number in range(2, sh.nrows):
-        row_values = sh.row_values(row_number)
+        header = sheet.row(1)
+        header.pop(0)
+        header_values = [ cell.value for cell in header]
 
-        exit_station = row_values[0]
-        row_values.pop(0)
+        data = []
+        for row_number in range(2, sheet.nrows):
+            row_values = sheet.row_values(row_number)
 
-        db_row = {}
-        for index, entry_station in enumerate(header_values):
-            ridership_value = round(row_values[index])
-            db_row['ridership'] = ridership_value
+            exit_station = row_values[0]
+            row_values.pop(0)
 
-            if "weekday" in sheet_name:
-                db_row["weekday"] = True
-            elif "saturday" in sheet_name:
-                db_row["saturday"] = True
-            elif "sunday" in sheet_name:
-                db_row["sunday"] = True
+            db_row = {}
+            for index, entry_station in enumerate(header_values):
+                ridership_value = round(row_values[index])
+                db_row['ridership'] = ridership_value
 
-            db_row["station_entry"] = entry_station
-            db_row["station_exit"] = exit_station
-            db_row["date_created"] = dt.datetime.now()
-            db_row["date_modified"] = dt.datetime.now()
+                if "weekday" in sheet_name:
+                    db_row["weekday"] = True
+                elif "saturday" in sheet_name:
+                    db_row["saturday"] = True
+                elif "sunday" in sheet_name:
+                    db_row["sunday"] = True
 
-        data.append(db_row)
+                db_row["station_entry"] = entry_station
+                db_row["station_exit"] = exit_station
+                db_row["date_created"] = dt.datetime.now()
+                db_row["date_modified"] = dt.datetime.now()
 
-    engine.execute(table.insert(), data)
+            data.append(db_row)
+
+        engine.execute(table.insert(), data)
 
 
 dag = DAG('import_bart_ridership',
