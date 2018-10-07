@@ -19,7 +19,7 @@ default_args = {
 }
 
 DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
-FILE_PATH = '/Users/jacinda.zhong/Downloads/ridership_2017/'
+FILE_PATH = 'data/bart/ridership_2017/'
 
 
 def create_ridership_table():

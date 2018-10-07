@@ -16,7 +16,7 @@ default_args = {
 }
 
 DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
-FILE_PATH = '/Users/jacinda.zhong/Downloads/Station_Names.xls'
+FILE_PATH = 'data/bart/Station_Names.xls'
 
 
 def create_station_name_table():
