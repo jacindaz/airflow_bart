@@ -17,14 +17,14 @@ default_args = {
 
 DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
 FILE_PATH = 'data/bart/Station_Names.xls'
+TABLE_NAME = 'dim_station_names'
 
-
-def create_station_name_table():
+def create_table():
     engine = create_engine(DB_URI)
     engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
 
     meta = MetaData(engine, schema="bart")
-    table = Table('station_names', meta,
+    table = Table(TABLE_NAME, meta,
                      Column('id', Integer, primary_key=True),
                      Column('name', String),
                      Column('two_letter_code', String)
@@ -32,7 +32,7 @@ def create_station_name_table():
     meta.create_all()
 
 
-def process_station_names():
+def import_station_names():
     book = xlrd.open_workbook(FILE_PATH)
     sh = book.sheet_by_index(0)
 
@@ -47,25 +47,25 @@ def process_station_names():
 
     engine = create_engine(DB_URI)
     meta = MetaData(engine)
-    table = Table('station_names', meta, schema='bart', autoload=True)
+    table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
     engine.execute(table.insert(), data)
 
 
-dag = DAG('import_bart_station_names',
+dag = DAG('station_names',
           default_args=default_args,
           schedule_interval='@hourly',
       )
 
 create_table = PythonOperator(
                   task_id='create_table',
-                  python_callable=create_station_name_table,
+                  python_callable=create_table,
                   dag=dag
               )
 
-process_station_names = PythonOperator(
-                            task_id='process_station_names',
-                            python_callable=process_station_names,
+import_station_names = PythonOperator(
+                            task_id='import_station_names',
+                            python_callable=import_station_names,
                             dag=dag
                         )
 
-process_station_names.set_upstream(create_table)
+import_station_names.set_upstream(create_table)

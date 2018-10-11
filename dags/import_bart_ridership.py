@@ -20,14 +20,15 @@ default_args = {
 
 DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
 FILE_PATH = 'data/bart/ridership_2017/'
+TABLE_NAME = 'fact_ridership'
 
 
-def create_ridership_table():
+def create_table():
     engine = create_engine(DB_URI)
     engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
 
     meta = MetaData(engine, schema="bart")
-    table = Table('ridership', meta,
+    table = Table(TABLE_NAME, meta,
                    Column('id', Integer, primary_key=True),
                    Column('station_entry', String),
                    Column('station_exit', String),
@@ -43,10 +44,10 @@ def create_ridership_table():
     meta.create_all()
 
 
-def process_ridership():
+def import_ridership():
     engine = create_engine(DB_URI)
     meta = MetaData(engine)
-    table = Table('ridership', meta, schema='bart', autoload=True)
+    table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
 
     onlyfiles = [f for f in listdir(FILE_PATH) if isfile(join(FILE_PATH, f))]
 
@@ -108,21 +109,21 @@ def process_ridership():
             engine.execute(table.insert(), data)
 
 
-dag = DAG('import_bart_ridership',
+dag = DAG('ridership',
           default_args=default_args,
           schedule_interval='@hourly',
       )
 
-create_ridership_table = PythonOperator(
-                             task_id='create_ridership_table',
-                             python_callable=create_ridership_table,
+create_table = PythonOperator(
+                             task_id='create_table',
+                             python_callable=create_table,
                              dag=dag
                          )
 
-process_ridership = PythonOperator(
-                        task_id='process_ridership',
-                        python_callable=process_ridership,
+import_ridership = PythonOperator(
+                        task_id='import_ridership',
+                        python_callable=import_ridership,
                         dag=dag
                     )
 
-process_ridership.set_upstream(create_ridership_table)
+import_ridership.set_upstream(create_table)
