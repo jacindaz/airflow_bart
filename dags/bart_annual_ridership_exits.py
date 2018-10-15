@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Date
 
 import helpers.constants as constants
 
+
 default_args = {
     'owner': 'me',
     'start_date': dt.datetime(2018, 6, 27),

@@ -11,6 +11,9 @@ from airflow.operators.python_operator import PythonOperator
 from openpyxl import load_workbook
 from sqlalchemy import create_engine, MetaData, Table, Column, Boolean, Date, Integer, String
 
+import helpers.constants as constants
+
+
 default_args = {
     'owner': 'me',
     'start_date': dt.datetime(2018, 6, 27),
@@ -18,13 +21,12 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
 FILE_PATH = 'data/bart/ridership_2017/'
 TABLE_NAME = 'fact_ridership'
 
 
 def create_table():
-    engine = create_engine(DB_URI)
+    engine = create_engine(constants.DB_URI)
     engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
 
     meta = MetaData(engine, schema="bart")
@@ -45,7 +47,7 @@ def create_table():
 
 
 def import_ridership():
-    engine = create_engine(DB_URI)
+    engine = create_engine(constants.DB_URI)
     meta = MetaData(engine)
     table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
 
