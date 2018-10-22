@@ -40,11 +40,28 @@ def create_table():
 
 
 def import_hourly_ridership():
+    engine = create_engine(DB_URI)
+    meta = MetaData(engine)
+    table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
+
     with open(FILE_PATH) as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=',')
-        for row in csv_reader:
 
-            ipdb.set_trace()
+        data = []
+        for row in csv_reader:
+            db_row = {
+                'date': row[0],
+                'hour': row[1],
+                'origin_station': row[2],
+                'destination_station': row[3],
+                'ridership': row[4]
+            }
+            data.append(db_row)
+
+            if csv_reader.line_num % 10000 == 0:
+                engine.execute(table.insert(), data)
+                print(".")
+                data = []
 
 
 dag = DAG('hourly_ridership_origin_dest_pairs',
