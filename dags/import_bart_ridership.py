@@ -32,8 +32,8 @@ def create_table():
     meta = MetaData(engine, schema="bart")
     table = Table(TABLE_NAME, meta,
                    Column('id', Integer, primary_key=True),
-                   Column('station_entry', String),
-                   Column('station_exit', String),
+                   Column('origin_station', String),
+                   Column('destination_station', String),
                    Column('ridership', Integer),
                    Column('weekday', Boolean),
                    Column('saturday', Boolean),
