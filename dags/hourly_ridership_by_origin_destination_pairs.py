@@ -1,9 +1,6 @@
 import csv
 import datetime as dt
-import gzip
-import ipdb
-import psycopg2
-import requests
+import gzip, os, psycopg2, re, requests
 
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
@@ -79,21 +76,35 @@ def import_hourly_ridership():
 
                 conn.commit()
 
+
+def temp_file_cleanup(directory=".", pattern="temp_file"):
+    for f in os.listdir(directory):
+        if re.search(pattern, f):
+            os.remove(f)
+
+
 dag = DAG('hourly_ridership_origin_dest_pairs',
           default_args=default_args,
           schedule_interval='@hourly',
       )
 
 create_table = PythonOperator(
-                             task_id='create_table',
-                             python_callable=create_table,
-                             dag=dag
-                         )
+     task_id='create_table',
+     python_callable=create_table,
+     dag=dag
+ )
 
 import_hourly_ridership = PythonOperator(
-                        task_id='import_hourly_ridership',
-                        python_callable=import_hourly_ridership,
-                        dag=dag
-                    )
+    task_id='import_hourly_ridership',
+    python_callable=import_hourly_ridership,
+    dag=dag
+)
+
+temp_file_cleanup = PythonOperator(
+    task_id='temp_file_cleanup',
+    python_callable=temp_file_cleanup,
+    dag=dag
+)
 
 import_hourly_ridership.set_upstream(create_table)
+temp_file_cleanup.set_upstream(import_hourly_ridership)
