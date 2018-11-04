@@ -4,8 +4,9 @@
 ## Roadmap
 1. Unit testing with: https://github.com/CloverHealth/pytest-pgsql
 2. Import all the things! no need to do any more aggregations
-3. choose beautifulsoup vs. scrapy - to scrape bart website to download .xlxs files
-4. Import Evictions data
+3. Upload files to S3 and read from S3
+4. choose beautifulsoup vs. scrapy - to scrape bart website to download .xlxs files
+5. Import Evictions data
 
 
 ## Later Roadmap
