@@ -1,12 +1,15 @@
 import csv
 import datetime as dt
+import gzip
 import ipdb
+import psycopg2
+import requests
 
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 
 from openpyxl import load_workbook
-from sqlalchemy import create_engine, MetaData, Table, Column, Date, Integer, String
+from sqlalchemy import create_engine, MetaData, Table, Column, Date, Integer, String, select, func
 
 import helpers.constants as constants
 
@@ -18,51 +21,63 @@ default_args = {
 }
 
 DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
+SCHEMA = 'bart'
 FILE_PATH = 'data/bart/hourly_ridership_by_origin_destination_pairs.csv'
-TABLE_NAME = 'fact_hourly_ridership_2011'
+FILE_YEARS = [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
+
+
+def _table_name(year):
+    return f"fact_hourly_ridership_{year}"
+
+
+def _table_count(table_object):
+    return select([func.count()]).select_from(table_object).execute().first()[0]
 
 
 def create_table():
     engine = create_engine(DB_URI)
-    engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
+    engine.execute(f"CREATE SCHEMA IF NOT EXISTS \"{SCHEMA}\"")
 
-    # Day, Hour, Origin Station, Destination Station, and Trip Count
-    meta = MetaData(engine, schema="bart")
-    table = Table(TABLE_NAME, meta,
-                     Column('id', Integer, primary_key=True),
-                     Column('date', Date),
-                     Column('hour', Integer),
-                     Column('origin_station', String),
-                     Column('destination_station', String),
-                     Column('ridership', Integer)
-                 )
-    meta.create_all()
+    meta = MetaData(engine, schema=SCHEMA)
+
+    for year in FILE_YEARS:
+        if not engine.dialect.has_table(engine, _table_name(year), schema=SCHEMA):
+            table = Table(_table_name(year), meta,
+                             Column('id', Integer, primary_key=True),
+                             Column('date', Date),
+                             Column('hour', Integer),
+                             Column('origin_station', String),
+                             Column('destination_station', String),
+                             Column('ridership', Integer)
+                         )
+            meta.create_all()
 
 
 def import_hourly_ridership():
-    engine = create_engine(DB_URI)
-    meta = MetaData(engine)
-    table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
+    for year in FILE_YEARS:
+        table_name = _table_name(year)
 
-    with open(FILE_PATH) as csvfile:
-        csv_reader = csv.reader(csvfile, delimiter=',')
+        engine = create_engine(DB_URI)
+        meta = MetaData(engine, schema=SCHEMA)
 
-        data = []
-        for row in csv_reader:
-            db_row = {
-                'date': row[0],
-                'hour': row[1],
-                'origin_station': row[2],
-                'destination_station': row[3],
-                'ridership': row[4]
-            }
-            data.append(db_row)
+        table = Table(table_name, meta)
+        if _table_count(table) == 0:
+            url = f"http://64.111.127.166/origin-destination/date-hour-soo-dest-{year}.csv.gz"
+            r = requests.get(url)
+            open(f"temp_file_{year}.csv.gz", 'wb').write(r.content)
 
-            if csv_reader.line_num % 10000 == 0:
-                engine.execute(table.insert(), data)
-                print(".")
-                data = []
+            conn = psycopg2.connect("host=localhost dbname=sf_data user=jacinda.zhong")
+            cur = conn.cursor()
 
+            with gzip.open(f"temp_file_{year}.csv.gz", 'rb') as f:
+                cur.copy_from(f, f"bart.{table_name}", sep=',',
+                    columns=('date', 'hour', 'origin_station', 'destination_station', 'ridership')
+                )
+
+                table = Table(table_name, meta)
+                print(f"Finished writing to {table_name}. It has count: (_table_count(table))")
+
+                conn.commit()
 
 dag = DAG('hourly_ridership_origin_dest_pairs',
           default_args=default_args,
