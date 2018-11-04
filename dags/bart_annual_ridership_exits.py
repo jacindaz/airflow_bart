@@ -21,6 +21,7 @@ default_args = {
 FILE_PATH='data/bart/BART_Ridership_FY73_FY18.xlsx'
 TABLE_NAME = 'fact_annual_ridership'
 
+
 def create_table():
     engine = create_engine(constants.DB_URI)
     engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
