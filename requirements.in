@@ -1,3 +1,4 @@
 psycopg2==2.7.5
+pytest-pgsql==1.1.1
 sqlalchemy==1.2.10
 xlrd==1.1.0

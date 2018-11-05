@@ -31,8 +31,8 @@ def _table_count(table_object):
     return select([func.count()]).select_from(table_object).execute().first()[0]
 
 
-def create_table():
-    engine = create_engine(DB_URI)
+def create_table(db_uri=DB_URI):
+    engine = create_engine(db_uri)
     engine.execute(f"CREATE SCHEMA IF NOT EXISTS \"{SCHEMA}\"")
 
     meta = MetaData(engine, schema=SCHEMA)
@@ -50,11 +50,11 @@ def create_table():
             meta.create_all()
 
 
-def import_hourly_ridership():
+def import_hourly_ridership(db_uri=DB_URI):
     for year in FILE_YEARS:
         table_name = _table_name(year)
 
-        engine = create_engine(DB_URI)
+        engine = create_engine(db_uri)
         meta = MetaData(engine, schema=SCHEMA)
 
         table = Table(table_name, meta)
@@ -88,23 +88,23 @@ dag = DAG('hourly_ridership_origin_dest_pairs',
           schedule_interval='@hourly',
       )
 
-create_table = PythonOperator(
-     task_id='create_table',
+create_table_task = PythonOperator(
+     task_id='create_table_id',
      python_callable=create_table,
      dag=dag
  )
 
-import_hourly_ridership = PythonOperator(
-    task_id='import_hourly_ridership',
+import_hourly_ridership_task = PythonOperator(
+    task_id='import_hourly_ridership_id',
     python_callable=import_hourly_ridership,
     dag=dag
 )
 
-temp_file_cleanup = PythonOperator(
-    task_id='temp_file_cleanup',
+temp_file_cleanup_task = PythonOperator(
+    task_id='temp_file_cleanup_id',
     python_callable=temp_file_cleanup,
     dag=dag
 )
 
-import_hourly_ridership.set_upstream(create_table)
-temp_file_cleanup.set_upstream(import_hourly_ridership)
+import_hourly_ridership_task.set_upstream(create_table_task)
+temp_file_cleanup_task.set_upstream(import_hourly_ridership_task)
