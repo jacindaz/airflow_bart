@@ -22,8 +22,8 @@ FILE_PATH='data/bart/BART_Ridership_FY73_FY18.xlsx'
 TABLE_NAME = 'fact_annual_ridership'
 
 
-def create_table():
-    engine = create_engine(constants.DB_URI)
+def create_table(db_uri=constants.DB_URI):
+    engine = create_engine(db_uri)
     engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
 
     meta = MetaData(engine, schema="bart")
@@ -102,16 +102,16 @@ dag = DAG('annual_exits',
     schedule_interval='@once'
 )
 
-create_table = PythonOperator(
+create_table_task = PythonOperator(
     task_id='create_table',
     python_callable=create_table,
     dag=dag
 )
 
-import_annual_ridership = PythonOperator(
+import_annual_ridership_task = PythonOperator(
     task_id='import_annual_ridership',
     python_callable=import_annual_ridership,
     dag=dag
 )
 
-import_annual_ridership.set_upstream(create_table)
+import_annual_ridership_task.set_upstream(create_table_task)

@@ -17,7 +17,6 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-DB_URI = 'postgresql+psycopg2://jacinda.zhong@localhost:5432/sf_data'
 SCHEMA = 'bart'
 FILE_PATH = 'data/bart/hourly_ridership_by_origin_destination_pairs.csv'
 FILE_YEARS = [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
@@ -31,7 +30,7 @@ def _table_count(table_object):
     return select([func.count()]).select_from(table_object).execute().first()[0]
 
 
-def create_table(db_uri=DB_URI):
+def create_table(db_uri=constants.DB_URI):
     engine = create_engine(db_uri)
     engine.execute(f"CREATE SCHEMA IF NOT EXISTS \"{SCHEMA}\"")
 
@@ -50,7 +49,7 @@ def create_table(db_uri=DB_URI):
             meta.create_all()
 
 
-def import_hourly_ridership(db_uri=DB_URI):
+def import_hourly_ridership(db_uri=constants.DB_URI):
     for year in FILE_YEARS:
         table_name = _table_name(year)
 
