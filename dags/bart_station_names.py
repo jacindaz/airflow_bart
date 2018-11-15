@@ -33,15 +33,15 @@ def create_table(db_uri=constants.DB_URI):
     meta.create_all()
 
 
-def import_station_names(db_uri=constants.DB_URI):
-    book = xlrd.open_workbook(FILE_PATH)
+def import_station_names(db_uri=constants.DB_URI, file_path=FILE_PATH):
+    book = xlrd.open_workbook(file_path)
     sh = book.sheet_by_index(0)
 
     header = sh.row(0)
     header.pop(0)
 
     data = []
-    for row_number in range(2, sh.nrows):
+    for row_number in range(1, sh.nrows):
         row_values = sh.row_values(row_number)
         db_row = {'name': row_values[2], 'two_letter_code': row_values[1]}
         data.append(db_row)
