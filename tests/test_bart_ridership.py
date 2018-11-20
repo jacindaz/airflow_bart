@@ -9,6 +9,7 @@ def test_create_table(postgresql_db):
 
     assert postgresql_db.has_table(dag.TABLE_NAME) == True
 
+
 def test_import_ridership(postgresql_db):
     dag.create_table(postgresql_db.postgresql_url)
 

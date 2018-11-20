@@ -46,6 +46,23 @@ def create_table(db_uri=constants.DB_URI):
     meta.create_all()
 
 
+def _set_weekday_sat_sun_values(sheet_name, db_row):
+    if sheet_name == 'weekday':
+        db_row["weekday"] = True
+        db_row["saturday"] = False
+        db_row["sunday"] = False
+    elif sheet_name == 'saturday':
+        db_row["saturday"] = True
+        db_row["weekday"] = False
+        db_row["sunday"] = False
+    elif sheet_name == 'sunday':
+        db_row["sunday"] = True
+        db_row["weekday"] = False
+        db_row["saturday"] = False
+
+    return db_row
+
+
 def import_ridership(db_uri=constants.DB_URI, file_dir=FILE_DIR):
     engine = create_engine(db_uri)
     meta = MetaData(engine)
@@ -82,21 +99,7 @@ def import_ridership(db_uri=constants.DB_URI, file_dir=FILE_DIR):
                     ridership_value = round(row_values[index])
                     db_row['ridership'] = ridership_value
 
-                    if "weekday" in sheet_name:
-                        db_row["weekday"] = True
-
-                        db_row["saturday"] = False
-                        db_row["sunday"] = False
-                    elif "saturday" in sheet_name:
-                        db_row["saturday"] = True
-
-                        db_row["weekday"] = False
-                        db_row["sunday"] = False
-                    elif "sunday" in sheet_name:
-                        db_row["sunday"] = True
-
-                        db_row["weekday"] = False
-                        db_row["saturday"] = False
+                    db_row = _set_weekday_sat_sun_values(sheet_name, db_row)
 
                     db_row["station_entry"] = entry_station
                     db_row["station_exit"] = exit_station
