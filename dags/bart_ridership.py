@@ -21,8 +21,8 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-FILE_PATH = 'data/bart/ridership_2017/'
-TABLE_NAME = 'fact_ridership'
+FILE_DIR = 'data/bart/ridership_2017/'
+TABLE_NAME = 'fact_ridership_2017'
 
 
 def create_table(db_uri=constants.DB_URI):
@@ -46,17 +46,17 @@ def create_table(db_uri=constants.DB_URI):
     meta.create_all()
 
 
-def import_ridership(db_uri=constants.DB_URI, file_path=FILE_PATH):
+def import_ridership(db_uri=constants.DB_URI, file_dir=FILE_DIR):
     engine = create_engine(db_uri)
     meta = MetaData(engine)
     table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
 
-    onlyfiles = [f for f in listdir(file_path) if isfile(join(file_path, f))]
+    onlyfiles = [f for f in listdir(file_dir) if isfile(join(file_dir, f))]
 
     for file_name in onlyfiles:
         print(f"processing file: {file_name}")
 
-        book = xlrd.open_workbook(file_path + file_name)
+        book = xlrd.open_workbook(file_dir + file_name)
 
         regex_decimals = re.compile(r'\d+')
         file_year = regex_decimals.findall(file_name)[0]
