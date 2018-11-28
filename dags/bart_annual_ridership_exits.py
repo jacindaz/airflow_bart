@@ -41,8 +41,8 @@ def create_table(db_uri=constants.DB_URI):
     meta.create_all()
 
 
-def import_annual_ridership():
-    book = xlrd.open_workbook(FILE_PATH)
+def import_annual_ridership(db_uri=constants.DB_URI, file_path=FILE_PATH):
+    book = xlrd.open_workbook(file_path)
     sh = book.sheet_by_index(0)
 
     header = sh.row(2)
@@ -68,7 +68,7 @@ def import_annual_ridership():
             pass
 
 
-    engine = create_engine(constants.DB_URI)
+    engine = create_engine(db_uri)
     meta = MetaData(engine)
     table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
     engine.execute(table.insert(), data)
@@ -103,13 +103,13 @@ dag = DAG('annual_exits',
 )
 
 create_table_task = PythonOperator(
-    task_id='create_table',
+    task_id='create_table_id',
     python_callable=create_table,
     dag=dag
 )
 
 import_annual_ridership_task = PythonOperator(
-    task_id='import_annual_ridership',
+    task_id='import_annual_ridership_id',
     python_callable=import_annual_ridership,
     dag=dag
 )
