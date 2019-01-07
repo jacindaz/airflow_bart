@@ -29,14 +29,25 @@ def _table_name(year):
 def _table_count(table_object):
     return select([func.count()]).select_from(table_object).execute().first()[0]
 
+def _temp_file_name(year):
+    return f"temp_file_{year}.csv.gz"
 
-def create_table(db_uri=constants.DB_URI):
+def _create_temp_data_file(year):
+    url = f"http://64.111.127.166/origin-destination/date-hour-soo-dest-{year}.csv.gz"
+    r = requests.get(url)
+
+    buffered_writer = open(_temp_file_name(year), 'wb')
+    response_body = r.content
+    buffered_writer.write(response_body)
+
+
+def create_table(db_uri=constants.DB_URI, years=FILE_YEARS):
     engine = create_engine(db_uri)
     engine.execute(f"CREATE SCHEMA IF NOT EXISTS \"{SCHEMA}\"")
 
     meta = MetaData(engine, schema=SCHEMA)
 
-    for year in FILE_YEARS:
+    for year in years:
         if not engine.dialect.has_table(engine, _table_name(year), schema=SCHEMA):
             table = Table(_table_name(year), meta,
                              Column('id', Integer, primary_key=True),
@@ -49,8 +60,8 @@ def create_table(db_uri=constants.DB_URI):
             meta.create_all()
 
 
-def import_hourly_ridership(db_uri=constants.DB_URI):
-    for year in FILE_YEARS:
+def import_hourly_ridership(db_uri=constants.DB_URI, years=FILE_YEARS):
+    for year in years:
         table_name = _table_name(year)
 
         engine = create_engine(db_uri)
@@ -58,15 +69,13 @@ def import_hourly_ridership(db_uri=constants.DB_URI):
 
         table = Table(table_name, meta)
         if _table_count(table) == 0:
-            url = f"http://64.111.127.166/origin-destination/date-hour-soo-dest-{year}.csv.gz"
-            r = requests.get(url)
-            open(f"temp_file_{year}.csv.gz", 'wb').write(r.content)
+            _create_temp_data_file(year)
 
             conn = psycopg2.connect("host=localhost dbname=sf_data user=jacinda.zhong")
             cur = conn.cursor()
 
-            with gzip.open(f"temp_file_{year}.csv.gz", 'rb') as f:
-                cur.copy_from(f, f"bart.{table_name}", sep=',',
+            with gzip.open(_temp_file_name(year), 'rb') as file:
+                cur.copy_from(file, f"bart.{table_name}", sep=',',
                     columns=('date', 'hour', 'origin_station', 'destination_station', 'ridership')
                 )
 
