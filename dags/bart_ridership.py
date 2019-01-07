@@ -21,12 +21,12 @@ default_args = {
     'retry_delay': dt.timedelta(minutes=5),
 }
 
-FILE_PATH = 'data/bart/ridership_2017/'
-TABLE_NAME = 'fact_ridership'
+FILE_DIR = 'data/bart/ridership_2017/'
+TABLE_NAME = 'fact_ridership_2017'
 
 
-def create_table():
-    engine = create_engine(constants.DB_URI)
+def create_table(db_uri=constants.DB_URI):
+    engine = create_engine(db_uri)
     engine.execute('CREATE SCHEMA IF NOT EXISTS "bart"')
 
     meta = MetaData(engine, schema="bart")
@@ -46,17 +46,34 @@ def create_table():
     meta.create_all()
 
 
-def import_ridership():
-    engine = create_engine(constants.DB_URI)
+def _set_weekday_sat_sun_values(sheet_name, db_row):
+    if sheet_name == 'weekday':
+        db_row["weekday"] = True
+        db_row["saturday"] = False
+        db_row["sunday"] = False
+    elif sheet_name == 'saturday':
+        db_row["saturday"] = True
+        db_row["weekday"] = False
+        db_row["sunday"] = False
+    elif sheet_name == 'sunday':
+        db_row["sunday"] = True
+        db_row["weekday"] = False
+        db_row["saturday"] = False
+
+    return db_row
+
+
+def import_ridership(db_uri=constants.DB_URI, file_dir=FILE_DIR):
+    engine = create_engine(db_uri)
     meta = MetaData(engine)
     table = Table(TABLE_NAME, meta, schema='bart', autoload=True)
 
-    onlyfiles = [f for f in listdir(FILE_PATH) if isfile(join(FILE_PATH, f))]
+    onlyfiles = [f for f in listdir(file_dir) if isfile(join(file_dir, f))]
 
     for file_name in onlyfiles:
         print(f"processing file: {file_name}")
 
-        book = xlrd.open_workbook(FILE_PATH + file_name)
+        book = xlrd.open_workbook(file_dir + file_name)
 
         regex_decimals = re.compile(r'\d+')
         file_year = regex_decimals.findall(file_name)[0]
@@ -82,21 +99,7 @@ def import_ridership():
                     ridership_value = round(row_values[index])
                     db_row['ridership'] = ridership_value
 
-                    if "weekday" in sheet_name:
-                        db_row["weekday"] = True
-
-                        db_row["saturday"] = False
-                        db_row["sunday"] = False
-                    elif "saturday" in sheet_name:
-                        db_row["saturday"] = True
-
-                        db_row["weekday"] = False
-                        db_row["sunday"] = False
-                    elif "sunday" in sheet_name:
-                        db_row["sunday"] = True
-
-                        db_row["weekday"] = False
-                        db_row["saturday"] = False
+                    db_row = _set_weekday_sat_sun_values(sheet_name, db_row)
 
                     db_row["station_entry"] = entry_station
                     db_row["station_exit"] = exit_station
@@ -116,16 +119,16 @@ dag = DAG('ridership',
           schedule_interval='@hourly',
       )
 
-create_table = PythonOperator(
-                             task_id='create_table',
+create_table_task = PythonOperator(
+                             task_id='create_table_id',
                              python_callable=create_table,
                              dag=dag
                          )
 
-import_ridership = PythonOperator(
-                        task_id='import_ridership',
+import_ridership_task = PythonOperator(
+                        task_id='import_ridership_id',
                         python_callable=import_ridership,
                         dag=dag
                     )
 
-import_ridership.set_upstream(create_table)
+import_ridership_task.set_upstream(create_table_task)
