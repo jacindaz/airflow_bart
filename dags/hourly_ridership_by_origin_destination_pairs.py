@@ -71,8 +71,8 @@ def import_hourly_ridership(db_uri=constants.DB_URI, years=FILE_YEARS):
         if _table_count(table) == 0:
             _create_temp_data_file(year)
 
-            conn = psycopg2.connect("host=localhost dbname=sf_data user=jacinda.zhong")
-            cur = conn.cursor()
+            connection = engine.raw_connection()
+            cur = connection.cursor()
 
             with gzip.open(_temp_file_name(year), 'rb') as file:
                 cur.copy_from(file, f"bart.{table_name}", sep=',',
@@ -80,9 +80,9 @@ def import_hourly_ridership(db_uri=constants.DB_URI, years=FILE_YEARS):
                 )
 
                 table = Table(table_name, meta)
-                print(f"Finished writing to {table_name}. It has count: (_table_count(table))")
+                print(f"Finished writing to {table_name}. It has count: ({_table_count(table)})")
 
-                conn.commit()
+                connection.commit()
 
 
 def temp_file_cleanup(directory=".", pattern="temp_file"):
